@@ -69,7 +69,7 @@ class ContinuousRecordService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val prefs = getSharedPreferences("memory_prefs", android.content.Context.MODE_PRIVATE)
+        val prefs = com.example.utils.PrefsHelper.getPrefs(this)
         val recordEverything = prefs.getBoolean("record_everything", true)
 
         if (intent?.action == ACTION_PAUSE) {
@@ -104,7 +104,7 @@ class ContinuousRecordService : Service() {
         recordingJob = serviceScope.launch {
             while (isActive) {
                 try {
-                    val prefs = getSharedPreferences("memory_prefs", android.content.Context.MODE_PRIVATE)
+                    val prefs = com.example.utils.PrefsHelper.getPrefs(this@ContinuousRecordService)
                     val recordEverything = prefs.getBoolean("record_everything", true)
                     
                     val manager = getSystemService(NotificationManager::class.java)

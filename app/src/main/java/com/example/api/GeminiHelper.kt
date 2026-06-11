@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
 class GeminiHelper {
@@ -77,16 +78,23 @@ class GeminiHelper {
         if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") return@withContext "API Key is missing."
 
         try {
-            val uploadUrl = "https://generativelanguage.googleapis.com/upload/v1beta/files?key=$apiKey"
-            val fileBody = file.asRequestBody("audio/mp4".toMediaType())
+            val uploadUrl = "https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=multipart&key=$apiKey"
             
+            val requestBody = okhttp3.MultipartBody.Builder()
+                .setType("multipart/related".toMediaType())
+                .addPart(
+                    okhttp3.Headers.headersOf("Content-Type", "application/json; charset=UTF-8"),
+                    "{\"file\": {\"display_name\": \"${file.name}\"}}".toRequestBody("application/json; charset=UTF-8".toMediaType())
+                )
+                .addPart(
+                    okhttp3.Headers.headersOf("Content-Type", "audio/mp4"),
+                    file.asRequestBody("audio/mp4".toMediaType())
+                )
+                .build()
+
             val uploadRequest = Request.Builder()
                 .url(uploadUrl)
-                .addHeader("X-Goog-Upload-Command", "start, upload, finalize")
-                .addHeader("X-Goog-Upload-Header-Content-Length", file.length().toString())
-                .addHeader("X-Goog-Upload-Header-Content-Type", "audio/mp4")
-                .addHeader("Content-Type", "audio/mp4")
-                .post(fileBody)
+                .post(requestBody)
                 .build()
 
             val uploadResponse = RetrofitClient.okHttpClient.newCall(uploadRequest).execute()

@@ -45,7 +45,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             val context = androidx.compose.ui.platform.LocalContext.current
-            val prefs = androidx.compose.runtime.remember { context.getSharedPreferences("memory_prefs", android.content.Context.MODE_PRIVATE) }
+            val prefs = androidx.compose.runtime.remember { com.example.utils.PrefsHelper.getPrefs(context) }
             val scope = androidx.compose.runtime.rememberCoroutineScope()
 
             var userName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getString("user_name", "") ?: "") }

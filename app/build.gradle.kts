@@ -84,6 +84,7 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
+  implementation("androidx.security:security-crypto:1.1.0-alpha06")
   implementation(libs.androidx.biometric)
   implementation("androidx.fragment:fragment-ktx:1.8.2")
   // implementation(libs.androidx.datastore.preferences)

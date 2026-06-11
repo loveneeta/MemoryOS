@@ -62,7 +62,7 @@ fun DashboardScreen(
 ) {
     val memories by viewModel.allMemories.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("memory_prefs", Context.MODE_PRIVATE) }
+    val prefs = remember { com.example.utils.PrefsHelper.getPrefs(context) }
     var isRecording by remember { mutableStateOf(isServiceRunning(context, ContinuousRecordService::class.java)) }
     val apiKeyMissing = BuildConfig.GEMINI_API_KEY.isEmpty() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY"
 
