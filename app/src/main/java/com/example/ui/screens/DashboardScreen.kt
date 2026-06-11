@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import android.Manifest
+import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,12 +32,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.BuildConfig
 import com.example.data.MemoryEntity
 import com.example.service.ContinuousRecordService
 import com.example.ui.MemoryViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+@Suppress("DEPRECATION")
+fun isServiceRunning(context: Context, serviceClass: Class<*>): Boolean {
+    val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    for (service in manager.getRunningServices(Int.MAX_VALUE)) {
+        if (serviceClass.name == service.service.className) {
+            return true
+        }
+    }
+    return false
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,7 +62,14 @@ fun DashboardScreen(
 ) {
     val memories by viewModel.allMemories.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var isRecording by remember { mutableStateOf(false) }
+    val prefs = remember { context.getSharedPreferences("memory_prefs", Context.MODE_PRIVATE) }
+    var isRecording by remember { mutableStateOf(isServiceRunning(context, ContinuousRecordService::class.java)) }
+    val apiKeyMissing = BuildConfig.GEMINI_API_KEY.isEmpty() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY"
+
+    // Re-check service state when recomposed
+    LaunchedEffect(Unit) {
+        isRecording = isServiceRunning(context, ContinuousRecordService::class.java)
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -118,7 +139,9 @@ fun DashboardScreen(
                                 .clickable { onNavigateToSettings() },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("LA", color = Color.White, fontSize = 14.sp)
+                            val name = prefs.getString("user_name", "User") ?: "User"
+                            val initials = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
+                            Text(if (initials.isEmpty()) "U" else initials, color = Color.White, fontSize = 14.sp)
                         }
                     }
                 }
@@ -134,6 +157,23 @@ fun DashboardScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Filled.Search, contentDescription = "Search", tint = Color(0xFFC4C6D0))
                         Text("Search your life...", color = Color(0xFF8E9199), fontSize = 14.sp)
+                    }
+                }
+                if (apiKeyMissing) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .background(Color(0xFF854D0E), RoundedCornerShape(8.dp))
+                            .clickable { onNavigateToSettings() }
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            "Gemini API key not configured. AI features disabled.",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }

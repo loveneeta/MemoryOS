@@ -23,9 +23,15 @@ import java.util.Locale
 
 class ContinuousRecordService : Service() {
 
+    companion object {
+        const val ACTION_PAUSE = "com.example.service.action.PAUSE"
+        const val ACTION_START = "com.example.service.action.START"
+    }
+
     private var mediaRecorder: MediaRecorder? = null
     private var isRecording = false
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var recordingJob: Job? = null
     private var currentOutputFile: File? = null
     private lateinit var database: AppDatabase
 
@@ -35,19 +41,56 @@ class ContinuousRecordService : Service() {
         database = AppDatabase.getDatabase(applicationContext)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
-        )
+    private val geminiHelper = com.example.api.GeminiHelper()
 
-        val notification: Notification = NotificationCompat.Builder(this, "MemoryOSChannel")
-            .setContentTitle("MemoryOS is Recording")
-            .setContentText("Continuously buffering audio and video data...")
+    private fun getActionIntent(action: String): PendingIntent {
+        val intent = Intent(this, ContinuousRecordService::class.java).apply { this.action = action }
+        return PendingIntent.getService(this, if (action == ACTION_PAUSE) 1 else 2, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
+    private fun buildNotification(title: String, content: String, isRecordingNow: Boolean): Notification {
+        val notificationIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
+        
+        val builder = NotificationCompat.Builder(this, "MemoryOSChannel")
+            .setContentTitle(title)
+            .setContentText(content)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
-            .build()
+
+        if (isRecordingNow) {
+            builder.addAction(android.R.drawable.ic_media_pause, "Pause", getActionIntent(ACTION_PAUSE))
+        } else {
+            builder.addAction(android.R.drawable.ic_media_play, "Start", getActionIntent(ACTION_START))
+        }
+        
+        return builder.build()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val prefs = getSharedPreferences("memory_prefs", android.content.Context.MODE_PRIVATE)
+        val recordEverything = prefs.getBoolean("record_everything", true)
+
+        if (intent?.action == ACTION_PAUSE) {
+            prefs.edit().putBoolean("record_everything", false).apply()
+            recordingJob?.cancel()
+            stopMediaRecorder()
+            startRecordingLoop()
+            return START_STICKY
+        } else if (intent?.action == ACTION_START) {
+            prefs.edit().putBoolean("record_everything", true).apply()
+            recordingJob?.cancel()
+            stopMediaRecorder()
+            startRecordingLoop()
+            return START_STICKY
+        }
+
+        val notification = buildNotification(
+            if (recordEverything) "MemoryOS is Recording" else "MemoryOS Not Recording", 
+            if (recordEverything) "Listening \u2022 Next save in calculating..." else "Recording paused.", 
+            recordEverything
+        )
 
         startForeground(1, notification)
         
@@ -57,58 +100,63 @@ class ContinuousRecordService : Service() {
     }
 
     private fun startRecordingLoop() {
-        if (isRecording) return
-        
-        serviceScope.launch {
-            // Instantly save a past conversation buffer to demonstrate it works in the timeline
-            val initialTimeString = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(System.currentTimeMillis() - 30 * 60 * 1000))
-            val initialMemory = MemoryEntity(
-                title = "Idea: Mobile App Architecture ($initialTimeString)",
-                content = "I was thinking about the app architecture. We should probably stick to MVI for the UI layer but use an offline-first Room database approach. If we add a syncing service later, it can run as a background worker and sync changed records. That way the user experience is always instantaneous.",
-                summary = "Concept for offline-first MVI architecture using Room and background workers for sync.",
-                category = "Idea"
-            )
-            database.memoryDao().insertMemory(initialMemory)
-
+        recordingJob?.cancel()
+        recordingJob = serviceScope.launch {
             while (isActive) {
                 try {
                     val prefs = getSharedPreferences("memory_prefs", android.content.Context.MODE_PRIVATE)
                     val recordEverything = prefs.getBoolean("record_everything", true)
                     
+                    val manager = getSystemService(NotificationManager::class.java)
+
                     if (!recordEverything) {
+                        manager.notify(1, buildNotification("MemoryOS Not Recording", "Recording paused.", false))
                         delay(10 * 1000L) // check again in 10s if turned off
                         continue
                     }
-                    val intervalMinutes = prefs.getFloat("interval", 30f)
-                    val intervalMs = (intervalMinutes * 60 * 1000).toLong()
+                    val intervalMinutes = prefs.getFloat("interval", 30f).toInt()
 
                     startMediaRecorder()
                     
-                    // For demo purposes, if interval is high, we will still simulate
-                    // a fast turnaround for the very first interval so the user can see it work.
-                    // Otherwise it respects the actual interval.
-                    delay(intervalMs)
-                    
-                    stopMediaRecorder()
-                    
-                    val timeString = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
-                    
-                    val languages = listOf("Hindi", "English", "Hinglish")
-                    val chosenLanguage = languages.random()
-                    
-                    val contentText = when (chosenLanguage) {
-                        "Hindi" -> "विनीत: क्या तुमने सोचा है कि हम नया कैशिंग लेयर कैसे इम्प्लीमेंट कर सकते हैं?\nराहुल: हाँ, मैं सोच रहा था कि हम मेमकैश्ड की जगह रेडिस का उपयोग करें।\nविनीत: यह सही रहेगा। हम एक ड्राफ्ट तैयार करते हैं।"
-                        "Hinglish" -> "Loveneet: Yaar, tumne socha hai ki hum new caching layer kaise implement karenge?\nRahul: Haan bhai, main soch raha tha ki Memcached ki jagah Redis use karein for permanent storage.\nLoveneet: That makes sense. Let's draft a proposal."
-                        else -> "Loveneet: Have you thought about how we can implement the new caching layer?\nRahul: Yes, I was thinking we should use Redis instead of Memcached for the persistent store.\nLoveneet: That makes sense. Let's draft a proposal."
+                    for (i in intervalMinutes downTo 1) {
+                        manager.notify(1, buildNotification("MemoryOS is Recording", "Listening \u2022 Next save in $i min", true))
+                        delay(60 * 1000L)
                     }
 
-                    val dbMemory = MemoryEntity(
-                        title = "Conversation ($timeString) - Project Planning",
-                        content = contentText,
-                        summary = "Discussed implementing a new caching layer using Redis. Rahul will draft the architecture diagram. (Language: $chosenLanguage)",
-                        category = "Conversation"
-                    )
-                    database.memoryDao().insertMemory(dbMemory)
+                    stopMediaRecorder()
+                    
+                    val fileToProcess = currentOutputFile
+                    if (fileToProcess != null && fileToProcess.exists()) {
+                        val timeString = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
+                        val title = "Recording at $timeString"
+                        
+                        manager.notify(1, buildNotification("MemoryOS Processing", "Transcribing audio...", true))
+
+                        val transcript = geminiHelper.transcribeAudio(fileToProcess)
+                        val autoTranscribe = prefs.getBoolean("auto_transcribe", true)
+                        
+                        if (transcript.startsWith("Transcription empty") || transcript.startsWith("Transcription failed") || transcript.startsWith("Error") || transcript.startsWith("API Key is missing")) {
+                            val dbMemory = MemoryEntity(
+                                title = title,
+                                content = "[Transcription failed - audio saved] $transcript",
+                                category = "Life"
+                            )
+                            database.memoryDao().insertMemory(dbMemory)
+                        } else {
+                            val summary = if (autoTranscribe) geminiHelper.generateSummary(transcript) else ""
+                            val category = geminiHelper.detectCategory(transcript)
+                            
+                            val dbMemory = MemoryEntity(
+                                title = title,
+                                content = transcript,
+                                summary = summary,
+                                category = category
+                            )
+                            database.memoryDao().insertMemory(dbMemory)
+                            
+                            fileToProcess.delete() // Save storage on success
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e("ContinuousRecordService", "Recording error: ${e.message}")
                     delay(5000) // retry delay

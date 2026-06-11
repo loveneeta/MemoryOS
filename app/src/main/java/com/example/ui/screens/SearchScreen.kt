@@ -37,7 +37,10 @@ fun SearchScreen(
     val query by viewModel.searchQuery.collectAsStateWithLifecycle()
     val response by viewModel.aiResponse.collectAsStateWithLifecycle()
     val isAnalyzing by viewModel.isAnalyzing.collectAsStateWithLifecycle()
+    val allMemories by viewModel.allMemories.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+    
+    val isReady = allMemories.isNotEmpty()
     
     // Clear response when leaving
     DisposableEffect(Unit) {
@@ -78,13 +81,17 @@ fun SearchScreen(
                     .testTag("ai_search_input"),
                 leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = "AI", tint = Color(0xFF60A5FA)) },
                 trailingIcon = {
-                    IconButton(onClick = {
-                        focusManager.clearFocus()
-                        viewModel.searchMemory()
-                    }) {
-                        Icon(Icons.Filled.Search, contentDescription = "Search", tint = Color(0xFF60A5FA))
+                    IconButton(
+                        onClick = {
+                            focusManager.clearFocus()
+                            viewModel.searchMemory()
+                        },
+                        enabled = isReady
+                    ) {
+                        Icon(Icons.Filled.Search, contentDescription = "Search", tint = if (isReady) Color(0xFF60A5FA) else Color.Gray)
                     }
                 },
+                enabled = isReady,
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = Color(0xFF2D2F33),
@@ -97,12 +104,20 @@ fun SearchScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = {
                     focusManager.clearFocus()
-                    viewModel.searchMemory()
+                    if (isReady) viewModel.searchMemory()
                 }),
                 singleLine = true
             )
             
-            if (isAnalyzing) {
+            if (!isReady) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                    Text(
+                        "No memories recorded yet. Start recording or add one manually.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF8E9199)
+                    )
+                }
+            } else if (isAnalyzing) {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(modifier = Modifier.size(32.dp), color = Color(0xFF60A5FA))
                 }

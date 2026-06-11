@@ -37,6 +37,9 @@ fun MemoryDetailScreen(
     val memory = memories.find { it.id == memoryId }
 
     if (memory == null) {
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            onNavigateBack()
+        }
         return
     }
 

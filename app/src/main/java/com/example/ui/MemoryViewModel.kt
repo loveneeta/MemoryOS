@@ -38,14 +38,36 @@ class MemoryViewModel(
     }
 
     fun searchMemory() {
-        if (_searchQuery.value.isBlank()) return
+        val query = _searchQuery.value
+        if (query.isBlank()) return
         
         viewModelScope.launch {
             _isAnalyzing.value = true
-            val memories = allMemories.value.take(20).joinToString(separator = "\n---\n") { 
-                "Date: ${it.timestamp}, Title: ${it.title}, Category: ${it.category}, Content: ${it.content}" 
+            
+            val queryWords = query.lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }
+            
+            // Filter by keyword match first
+            var selectedMemories = allMemories.value.filter { memory ->
+                val titleMatch = queryWords.any { memory.title.lowercase().contains(it) }
+                val contentMatch = queryWords.any { memory.content.lowercase().contains(it) }
+                titleMatch || contentMatch
             }
-            val response = geminiHelper.askMemoryOS(_searchQuery.value, memories)
+            
+            // If very few matches, fallback to taking the 50 most recent
+            if (selectedMemories.size < 5) {
+                selectedMemories = (selectedMemories + allMemories.value.take(50)).distinctBy { it.id }
+            }
+            
+            var contextString = ""
+            for (memory in selectedMemories.sortedByDescending { it.timestamp }) {
+                val entry = "Date: ${memory.timestamp}, Title: ${memory.title}, Category: ${memory.category}, Content: ${memory.content}\n---\n"
+                if (contextString.length + entry.length > 8000) {
+                    break // Cap total context at ~8000 chars to avoid prompt limits
+                }
+                contextString += entry
+            }
+            
+            val response = geminiHelper.askMemoryOS(query, contextString)
             _aiResponse.value = response
             _isAnalyzing.value = false
         }

@@ -44,6 +44,13 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val prefs = androidx.compose.runtime.remember { context.getSharedPreferences("memory_prefs", android.content.Context.MODE_PRIVATE) }
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+            var userName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getString("user_name", "") ?: "") }
+            var userEmail by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getString("user_email", "") ?: "") }
+
             // User Profile Section
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2025)),
@@ -51,9 +58,32 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("User Profile", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = userName,
+                        onValueChange = { userName = it },
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color(0xFFE2E2E9))
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Name: Loveneet Arora", color = Color(0xFFE2E2E9))
-                    Text("Email: loveneetarora.ai@gmail.com", color = Color(0xFFE2E2E9))
+                    OutlinedTextField(
+                        value = userEmail,
+                        onValueChange = { userEmail = it },
+                        label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color(0xFFE2E2E9))
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { 
+                            prefs.edit().putString("user_name", userName).putString("user_email", userEmail).apply()
+                            android.widget.Toast.makeText(context, "Profile saved", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
+                    ) {
+                        Text("Save Profile")
+                    }
                 }
             }
 
@@ -65,19 +95,15 @@ fun SettingsScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Subscription", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Plan: Premium SaaS", color = Color(0xFFE2E2E9))
-                    Text("Status: Active", color = Color(0xFF22C55E))
-                    Text("Next billing: July 11, 2026", color = Color(0xFFE2E2E9))
+                    Text("No active subscription", color = Color(0xFFE2E2E9))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { /* TODO */ }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))) {
-                        Text("Manage Subscription")
+                    Button(onClick = { }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4B5563))) {
+                        Text("Coming Soon")
                     }
                 }
             }
 
             // Sync/Recording settings
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val prefs = androidx.compose.runtime.remember { context.getSharedPreferences("memory_prefs", android.content.Context.MODE_PRIVATE) }
             var recordEverything by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getBoolean("record_everything", true)) }
             var autoTranscribe by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getBoolean("auto_transcribe", true)) }
             var intervalMinutes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getFloat("interval", 30f)) }
@@ -126,12 +152,9 @@ fun SettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    val scope = androidx.compose.runtime.rememberCoroutineScope()
-                    
                     Button(
                         onClick = { 
                             scope.launch {
-                                val prefs = context.getSharedPreferences("memory_prefs", android.content.Context.MODE_PRIVATE)
                                 prefs.edit().apply {
                                     putBoolean("record_everything", recordEverything)
                                     putFloat("interval", intervalMinutes)
@@ -145,6 +168,19 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Save Preferences")
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { 
+                            val intent = android.content.Intent(context, com.example.service.ContinuousRecordService::class.java)
+                            context.stopService(intent)
+                            android.widget.Toast.makeText(context, "Service Stopped", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Stop Recording Service")
                     }
                 }
             }
