@@ -5,6 +5,7 @@ plugins {
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
   alias(libs.plugins.kotlin.serialization)
+  id("com.google.gms.google-services")
 }
 
 android {
@@ -12,7 +13,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.memoryos.rndxyz"
+    applicationId = "COM.LOVENEET.MemoryOS"
     minSdk = 26
     targetSdk = 36
     versionCode = 1
@@ -85,6 +86,11 @@ dependencies {
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
   implementation("androidx.security:security-crypto:1.1.0-alpha06")
+  implementation("net.zetetic:android-database-sqlcipher:4.5.3")
+  implementation("androidx.sqlite:sqlite-framework:2.3.1")
+  implementation("androidx.work:work-runtime-ktx:2.9.0")
+  implementation("com.google.firebase:firebase-auth-ktx:23.0.0")
+  implementation("com.google.firebase:firebase-firestore-ktx:25.0.0")
   implementation(libs.androidx.biometric)
   implementation("androidx.fragment:fragment-ktx:1.8.2")
   // implementation(libs.androidx.datastore.preferences)

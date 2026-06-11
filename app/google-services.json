@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "829310978786",
+    "project_id": "memoryos-32051",
+    "storage_bucket": "memoryos-32051.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:829310978786:android:c32e4ca75f2567436facbb",
+        "android_client_info": {
+          "package_name": "COM.LOVENEET.MemoryOS"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlN0O_S70uzZtsAO2nNseiGZ9KT0e-twk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

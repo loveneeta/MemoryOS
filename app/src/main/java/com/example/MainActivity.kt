@@ -38,9 +38,7 @@ class MainActivity : FragmentActivity() {
                         object : BiometricPrompt.AuthenticationCallback() {
                             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                                 super.onAuthenticationError(errorCode, errString)
-                                Toast.makeText(applicationContext, "Authentication error: \$errString", Toast.LENGTH_SHORT).show()
-                                // For now, just allow them in if emulator doesn't support it well, or show a fallback
-                                isAuthenticated = true
+                                Toast.makeText(applicationContext, "Authentication error: $errString", Toast.LENGTH_SHORT).show()
                             }
 
                             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {

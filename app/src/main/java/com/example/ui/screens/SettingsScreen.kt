@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -41,7 +42,8 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(androidx.compose.foundation.rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             val context = androidx.compose.ui.platform.LocalContext.current
@@ -184,8 +186,6 @@ fun SettingsScreen(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
 
             // Logout Button
             Button(
