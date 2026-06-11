@@ -1,0 +1,6 @@
+{
+  "name": "MemoryOS",
+  "description": "A privacy-first AI memory system and life-logging application.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
